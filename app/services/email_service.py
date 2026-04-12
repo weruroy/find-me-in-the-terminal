@@ -29,118 +29,121 @@ settings = get_settings()
 #  Core send helper
 # ─────────────────────────────────────────────────────────────────────────────
 async def send_email(
-  to_email:     str,
-  subject:      str,
-  html_content: str,
-  text_content: Optional[str] = None,
-  attachments:  Optional[List[str]] = None,
+    to_email:     str,
+    subject:      str,
+    html_content: str,
+    text_content: Optional[str] = None,
+    attachments:  Optional[List[str]] = None,
 ) -> tuple[bool, Optional[str]]:
-  """Send a single HTML email.
+    """Send a single HTML email.
 
-  Returns (True, None) on success or (False, error_message) on failure.
-  Supports attaching files by passing a list of file paths in `attachments`.
-  """
-  # Outer container must be 'mixed' when adding attachments
-  msg = MIMEMultipart("mixed")
-  msg["Subject"] = subject
-  msg["From"] = f"{settings.FROM_NAME} <{settings.FROM_EMAIL}>"
-  msg["To"] = to_email
-  msg["List-Unsubscribe"] = f"<{settings.APP_URL}/unsubscribe?email={to_email}>"
+    Returns (True, None) on success or (False, error_message) on failure.
+    Supports attaching files by passing a list of file paths in `attachments`.
+    """
+    # Outer container must be 'mixed' when adding attachments
+    msg = MIMEMultipart("mixed")
+    msg["Subject"] = subject
+    msg["From"]    = f"{settings.FROM_NAME} <{settings.FROM_EMAIL}>"
+    msg["To"]      = to_email
+    msg["List-Unsubscribe"] = f"<{settings.APP_URL}/unsubscribe?email={to_email}>"
 
-  # Normalize SMTP host/port and perform basic validation to catch common .env mistakes
-  smtp_host = (settings.SMTP_HOST or "").strip()
-  smtp_port = settings.SMTP_PORT
-  # If user accidentally put host:port in SMTP_HOST (e.g., smtp.gmail.com:587), split it.
-  if ":" in smtp_host:
-    host_candidate, port_candidate = smtp_host.rsplit(":", 1)
-    if port_candidate.isdigit():
-      smtp_host = host_candidate
-      try:
-        smtp_port = int(port_candidate)
-      except Exception:
-        pass
-      log.warning("Parsed SMTP_HOST with port: using host=%s port=%s", smtp_host, smtp_port)
-  # Common misconfiguration: SMTP_HOST set to an email address
-  if not smtp_host:
-    err_msg = "SMTP_HOST is not configured. Set SMTP_HOST to your SMTP server hostname (e.g. smtp.gmail.com)."
-    log.error(err_msg)
-    return False, err_msg
-  if "@" in smtp_host:
-    err_msg = (
-      f"SMTP_HOST appears to be an email address ('{smtp_host}'). "
-      "It should be your SMTP server host (e.g. smtp.gmail.com). Check your .env — you may have swapped SMTP_HOST and SMTP_USER."
-    )
-    log.error(err_msg)
-    return False, err_msg
-  # Validate port range
-  try:
-    smtp_port_int = int(smtp_port)
-  except Exception:
-    err_msg = f"SMTP_PORT is invalid: {smtp_port}"
-    log.error(err_msg)
-    return False, err_msg
-  if smtp_port_int <= 0 or smtp_port_int > 65535:
-    err_msg = f"SMTP_PORT is invalid: {smtp_port_int}"
-    log.error(err_msg)
-    return False, err_msg
-  # DNS resolution quick check
-  try:
-    import socket
-    socket.getaddrinfo(smtp_host, smtp_port_int)
-  except Exception as e:
-    err_msg = f"DNS resolution failed for SMTP_HOST '{smtp_host}': {e}"
-    log.error(err_msg)
-    return False, err_msg
+    # Normalize SMTP host/port and perform basic validation
+    smtp_host = (settings.SMTP_HOST or "").strip()
+    smtp_port = settings.SMTP_PORT
 
-  # Alternative part for plain / html
-  alt = MIMEMultipart("alternative")
-  if text_content:
-    alt.attach(MIMEText(text_content, "plain", "utf-8"))
-  alt.attach(MIMEText(html_content, "html", "utf-8"))
-  msg.attach(alt)
+    # If user accidentally put host:port in SMTP_HOST, split it
+    if ":" in smtp_host:
+        host_candidate, port_candidate = smtp_host.rsplit(":", 1)
+        if port_candidate.isdigit():
+            smtp_host = host_candidate
+            try:
+                smtp_port = int(port_candidate)
+            except Exception:
+                pass
+            log.warning("Parsed SMTP_HOST with port: using host=%s port=%s", smtp_host, smtp_port)
 
-  # Attach any provided files (silently skip missing files, but log)
-  if attachments:
-    for attach_path in attachments:
-      try:
-        p = Path(attach_path)
-        if not p.exists():
-          log.warning("Attachment not found, skipping: %s", attach_path)
-          continue
-        with p.open("rb") as f:
-          part = MIMEApplication(f.read(), Name=p.name)
-          part.add_header("Content-Disposition", "attachment", filename=p.name)
-          msg.attach(part)
-      except Exception as exc:
-        log.warning("Failed to attach %s: %s", attach_path, exc)
+    if not smtp_host:
+        err_msg = "SMTP_HOST is not configured. Set SMTP_HOST to your SMTP server hostname (e.g. smtp.gmail.com)."
+        log.error(err_msg)
+        return False, err_msg
 
-  try:
-    await aiosmtplib.send(
-      msg,
-      hostname=smtp_host,
-      port=smtp_port_int,
-      username=settings.SMTP_USER,
-      password=settings.SMTP_PASSWORD,
-      start_tls=True,
-    )
-    log.info("✅ Email sent → %s | %s", to_email, subject)
-    return True, None
-  except Exception as exc:
-    log.error("❌ Email failed → %s | %s | %s", to_email, subject, exc, exc_info=True)
+    if "@" in smtp_host:
+        err_msg = (
+            f"SMTP_HOST appears to be an email address ('{smtp_host}'). "
+            "It should be your SMTP server host (e.g. smtp.gmail.com). "
+            "Check your .env — you may have swapped SMTP_HOST and SMTP_USER."
+        )
+        log.error(err_msg)
+        return False, err_msg
 
-    # If running in DEBUG, persist the email to an outbox for inspection
-    if settings.DEBUG:
-      try:
-        outdir = Path.cwd() / "outbox"
-        outdir.mkdir(exist_ok=True)
-        safe_name = f"{datetime.utcnow().strftime('%Y%m%dT%H%M%S')}_{to_email.replace('@', '_at_')}"
-        html_file = outdir / f"{safe_name}.html"
-        html_file.write_text(html_content, encoding="utf-8")
-        log.info("Wrote failed email to outbox: %s", html_file)
-      except Exception:
-        log.exception("Failed to write outbox file")
+    try:
+        smtp_port_int = int(smtp_port)
+    except Exception:
+        err_msg = f"SMTP_PORT is invalid: {smtp_port}"
+        log.error(err_msg)
+        return False, err_msg
 
-    return False, str(exc)
+    if smtp_port_int <= 0 or smtp_port_int > 65535:
+        err_msg = f"SMTP_PORT is invalid: {smtp_port_int}"
+        log.error(err_msg)
+        return False, err_msg
+
+    try:
+        import socket
+        socket.getaddrinfo(smtp_host, smtp_port_int)
+    except Exception as e:
+        err_msg = f"DNS resolution failed for SMTP_HOST '{smtp_host}': {e}"
+        log.error(err_msg)
+        return False, err_msg
+
+    # Alternative part for plain / html
+    alt = MIMEMultipart("alternative")
+    if text_content:
+        alt.attach(MIMEText(text_content, "plain", "utf-8"))
+    alt.attach(MIMEText(html_content, "html", "utf-8"))
+    msg.attach(alt)
+
+    # Attach any provided files
+    if attachments:
+        for attach_path in attachments:
+            try:
+                p = Path(attach_path)
+                if not p.exists():
+                    log.warning("Attachment not found, skipping: %s", attach_path)
+                    continue
+                with p.open("rb") as f:
+                    part = MIMEApplication(f.read(), Name=p.name)
+                    part.add_header("Content-Disposition", "attachment", filename=p.name)
+                    msg.attach(part)
+            except Exception as exc:
+                log.warning("Failed to attach %s: %s", attach_path, exc)
+
+    try:
+        await aiosmtplib.send(
+            msg,
+            hostname=smtp_host,
+            port=smtp_port_int,
+            username=settings.SMTP_USER,
+            password=settings.SMTP_PASSWORD,
+            start_tls=True,
+        )
+        log.info("✅ Email sent → %s | %s", to_email, subject)
+        return True, None
+    except Exception as exc:
+        log.error("❌ Email failed → %s | %s | %s", to_email, subject, exc, exc_info=True)
+
+        if settings.DEBUG:
+            try:
+                outdir = Path.cwd() / "outbox"
+                outdir.mkdir(exist_ok=True)
+                safe_name = f"{datetime.utcnow().strftime('%Y%m%dT%H%M%S')}_{to_email.replace('@', '_at_')}"
+                html_file = outdir / f"{safe_name}.html"
+                html_file.write_text(html_content, encoding="utf-8")
+                log.info("Wrote failed email to outbox: %s", html_file)
+            except Exception:
+                log.exception("Failed to write outbox file")
+
+        return False, str(exc)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -197,10 +200,10 @@ def _shell(cmd: str) -> str:
 #  Welcome Email  (sent immediately on subscribe)
 # ─────────────────────────────────────────────────────────────────────────────
 def build_welcome_email(email: str, unsubscribe_token: str) -> tuple[str, str, list[str]]:
-  """Returns (subject, html_body, attachments)
+    """Returns (subject, html_body, attachments)
 
-  Automatically includes the PDF Vim guide if present at `app/docs/vim_complete_guide_v2.pdf`.
-  """
+    Automatically includes the PDF Vim guide if present at app/docs/vim_complete_guide_v2.pdf.
+    """
     unsubscribe_url = f"{settings.APP_URL}/unsubscribe?token={unsubscribe_token}"
     today           = datetime.now().strftime("%d %b %Y").upper()
 
@@ -219,7 +222,6 @@ def build_welcome_email(email: str, unsubscribe_token: str) -> tuple[str, str, l
   Vim tricks, and terminal productivity drops straight to your inbox.
   Here&rsquo;s your welcome pack to get you dangerous at the command line.</p>
 
-  <!-- VIM CHEAT SHEET -->
   <div class="section">
     <div class="sec-title">// Vim Essentials &mdash; Survive &amp; Thrive</div>
     <div class="cmd-row"><span class="cmd">i / Esc</span><div class="cmd-desc">Enter Insert mode to type text / return to Normal mode. <strong>Always</strong> press Esc before any command.</div></div>
@@ -229,19 +231,18 @@ def build_welcome_email(email: str, unsubscribe_token: str) -> tuple[str, str, l
     <div class="cmd-row"><span class="cmd">dd / yy</span><div class="cmd-desc">Delete (cut) the current line / Yank (copy) the current line.</div></div>
     <div class="cmd-row"><span class="cmd">ciw</span><div class="cmd-desc">Change Inner Word &mdash; delete the word under cursor, enter insert mode. One of Vim&rsquo;s most powerful commands.</div></div>
     <div class="cmd-row"><span class="cmd">:%s/old/new/g</span><div class="cmd-desc">Find and replace every occurrence of &ldquo;old&rdquo; with &ldquo;new&rdquo; across the entire file.</div></div>
-    <div class="cmd-row"><span class="cmd">Ctrl+v → I</span><div class="cmd-desc">Block visual mode &rarr; Insert: edit multiple lines simultaneously (great for bulk commenting code).</div></div>
+    <div class="cmd-row"><span class="cmd">Ctrl+v → I</span><div class="cmd-desc">Block visual mode &rarr; Insert: edit multiple lines simultaneously.</div></div>
   </div>
 
-  <!-- LINUX TERMINAL COMMANDS -->
   <div class="section">
     <div class="sec-title">// Terminal Navigation &mdash; Core Commands</div>
-    <div class="cmd-row"><span class="cmd">ls -lah</span><div class="cmd-desc">List directory contents with human-readable sizes, hidden files, and permissions. Know this by heart.</div></div>
-    <div class="cmd-row"><span class="cmd">cd -</span><div class="cmd-desc">Return to the PREVIOUS directory. Like a browser back button for your terminal. Massively underused.</div></div>
+    <div class="cmd-row"><span class="cmd">ls -lah</span><div class="cmd-desc">List directory contents with human-readable sizes, hidden files, and permissions.</div></div>
+    <div class="cmd-row"><span class="cmd">cd -</span><div class="cmd-desc">Return to the PREVIOUS directory. Like a browser back button for your terminal.</div></div>
     <div class="cmd-row"><span class="cmd">Ctrl+R</span><div class="cmd-desc">Reverse-search command history. Start typing to find any command you&rsquo;ve run before.</div></div>
-    <div class="cmd-row"><span class="cmd">grep -r "text" .</span><div class="cmd-desc">Recursively search for text in all files in current directory. Essential for navigating codebases.</div></div>
+    <div class="cmd-row"><span class="cmd">grep -r "text" .</span><div class="cmd-desc">Recursively search for text in all files in current directory.</div></div>
     <div class="cmd-row"><span class="cmd">tail -f log.txt</span><div class="cmd-desc">Follow a log file in real-time. Indispensable for monitoring servers and debugging live systems.</div></div>
     <div class="cmd-row"><span class="cmd">chmod +x script.sh</span><div class="cmd-desc">Make a script executable. Required before running any shell script you create.</div></div>
-    <div class="cmd-row"><span class="cmd">ps aux | grep app</span><div class="cmd-desc">Find a running process by name. Pipe ps output through grep to find exactly what you need.</div></div>
+    <div class="cmd-row"><span class="cmd">ps aux | grep app</span><div class="cmd-desc">Find a running process by name.</div></div>
   </div>
 
   <div class="code-block">
@@ -259,16 +260,15 @@ def build_welcome_email(email: str, unsubscribe_token: str) -> tuple[str, str, l
 
 </div></body></html>"""
 
-    # Attach the full Vim guide PDF if it exists in app/docs/
     docs_file = Path(__file__).resolve().parents[1] / "docs" / "vim_complete_guide_v2.pdf"
     attachments: list[str] = []
     if docs_file.exists():
-      attachments.append(str(docs_file))
+        attachments.append(str(docs_file))
 
     return (
-      "⚡ Welcome to Find me in the terminal — Your Vim and Linux Cheat Sheet",
-      html,
-      attachments,
+        "⚡ Welcome to Find me in the terminal — Your Vim and Linux Cheat Sheet",
+        html,
+        attachments,
     )
 
 
@@ -276,10 +276,10 @@ def build_welcome_email(email: str, unsubscribe_token: str) -> tuple[str, str, l
 #  Daily Command Drop Email
 # ─────────────────────────────────────────────────────────────────────────────
 def build_daily_drop_email(
-    command:          str,
-    description:      str,
-    example:          str,
-    tip:              str,
+    command:           str,
+    description:       str,
+    example:           str,
+    tip:               str,
     unsubscribe_token: str,
 ) -> tuple[str, str]:
     """Returns (subject, html_body)"""
@@ -335,8 +335,8 @@ def build_daily_drop_email(
 #  Generic Broadcast Email (custom HTML from admin)
 # ─────────────────────────────────────────────────────────────────────────────
 def build_broadcast_email(
-    subject:          str,
-    html_body:        str,
+    subject:           str,
+    html_body:         str,
     unsubscribe_token: str,
 ) -> tuple[str, str]:
     """Wraps arbitrary HTML in the standard header/footer shell."""
