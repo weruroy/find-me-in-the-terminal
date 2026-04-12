@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Unsubscribe — Find me in the terminal</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#121417;color:#E8EDF0;font-family:'Manrope',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .card{background:#1D2023;border:1px solid #2A2F34;border-radius:12px;padding:48px 40px;max-width:480px;width:100%;text-align:center}
+  .logo{font-size:16px;font-weight:800;color:#D8F3DC;letter-spacing:-0.02em;margin-bottom:32px}
+  .icon{font-size:48px;margin-bottom:20px}
+  h1{font-size:24px;font-weight:800;color:#E8EDF0;letter-spacing:-0.02em;margin-bottom:12px}
+  p{font-size:14px;color:#95A5A6;line-height:1.7;margin-bottom:28px}
+  a.btn{display:inline-block;background:#D8F3DC;color:#0A2E18;font-weight:700;font-size:14px;padding:12px 28px;border-radius:8px;text-decoration:none;transition:opacity .2s}
+  a.btn:hover{opacity:.85}
+  .code{font-family:'JetBrains Mono',monospace;font-size:12px;color:#5A6370;margin-top:20px}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">Find me in the terminal</div>
+  {% if success %}
+  <div class="icon">✓</div>
+  <h1 style="color:#D8F3DC">Successfully unsubscribed</h1>
+  {% else %}
+  <div class="icon">⚠</div>
+  <h1>Something went wrong</h1>
+  {% endif %}
+  <p>{{ message }}</p>
+  <a class="btn" href="{{ app_url }}">Back to homepage</a>
+  <div class="code">// find me in the terminal</div>
+</div>
+</body>
+</html>
