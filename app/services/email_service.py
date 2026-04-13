@@ -15,8 +15,11 @@ import resend
 from pathlib import Path
 from typing import List, Optional
 
-import aiosmtplib
-import httpx
+# import aiosmtplib
+# import httpx
+
+from pathlib import Path
+import base64
 
 from app.config import get_settings
 
@@ -30,7 +33,8 @@ async def send_email(
     subject:      str,
     html_content: str,
     text_content: str = None,
-) -> bool:
+    attachments:  list[str] = None,       # ← add this
+) -> tuple[bool, str | None]:             # ← return (ok, err) not just bool
     try:
         resend.api_key = settings.RESEND_API_KEY
         params = {
@@ -41,12 +45,26 @@ async def send_email(
         }
         if text_content:
             params["text"] = text_content
+
+        # Handle PDF attachments — Resend requires base64 encoded content
+        if attachments:
+            encoded = []
+            for path in attachments:
+                with open(path, "rb") as f:
+                    import base64
+                    encoded.append({
+                        "filename": Path(path).name,
+                        "content":  base64.b64encode(f.read()).decode("utf-8"),
+                    })
+            params["attachments"] = encoded
+
         resend.Emails.send(params)
         log.info("✅ Email sent → %s", to_email)
-        return True
+        return True, None                  # ← return tuple
+
     except Exception as e:
         log.error("❌ Email failed → %s | %s", to_email, e)
-        return False
+        return False, str(e)              
 
 # --- Template builders ---
 def build_welcome_email(email: str, unsubscribe_token: str) -> tuple[str, str, list[str]]:
