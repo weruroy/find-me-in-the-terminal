@@ -6,6 +6,7 @@
 <meta name="description" content="Daily Linux commands, Vim tricks, and terminal productivity drops for developers who live in the command line."/>
 <title>{{ app_name }}</title>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+<link rel="icon" type="image/png" href="logo.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script>
@@ -92,7 +93,12 @@
 <!-- ── NAV ─────────────────────────────────────────────────────────────── -->
 <header class="fixed top-0 left-0 right-0 z-50 glass-header border-b border-outline-variant/20">
   <nav class="flex justify-between items-center w-full px-6 py-4 max-w-5xl mx-auto font-['Manrope'] antialiased">
-    <div class="text-xl font-bold tracking-[-0.02em] text-on-surface">Find me in the terminal</div>
+    <div class="flex items-center">
+      <a href="/" class="flex items-center gap-3">
+        <img src="/logo.png" alt="{{ app_name }}" class="h-8 w-auto"/>
+        <span class="text-xl font-bold tracking-[-0.02em] text-on-surface">Find me in the terminal</span>
+      </a>
+    </div>
     <div class="hidden md:flex items-center gap-8">
       <a class="text-on-surface-variant hover:text-on-surface transition-colors duration-200 text-sm font-medium" href="#">Archive</a>
       <a class="text-primary font-semibold border-b-2 border-primary pb-1 text-sm" href="#">About</a>

@@ -7,9 +7,9 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -83,6 +83,17 @@ async def landing_page(request: Request):
         },
     )
 
+
+    # Serve repository-root logo.png at /logo.png (falls back to app/static/logo.png if present)
+    @app.get("/logo.png")
+    async def logo_png():
+        root_logo = Path(__file__).resolve().parent.parent / "logo.png"
+        app_static_logo = Path(__file__).resolve().parent / "static" / "logo.png"
+        if root_logo.exists():
+            return FileResponse(str(root_logo))
+        if app_static_logo.exists():
+            return FileResponse(str(app_static_logo))
+        raise HTTPException(status_code=404, detail="Logo not found")
 
 # ── Unsubscribe page ───────────────────────────────────────────────────────
 @app.get("/unsubscribe", response_class=HTMLResponse)
