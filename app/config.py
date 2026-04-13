@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from functools import lru_cache
+from typing import Optional
 
 
 class Settings(BaseSettings):
@@ -11,6 +12,7 @@ class Settings(BaseSettings):
     # ── Neon PostgreSQL (async) ────────────────────────────────────────
     # Format: postgresql+asyncpg://user:password@host/dbname?sslmode=require
     DATABASE_URL: str
+    RESEND_API_KEY: str
 
     # ── SMTP / Email ───────────────────────────────────────────────────
     SMTP_HOST:     str = "smtp.gmail.com"
@@ -19,6 +21,10 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str           # Gmail App Password (16 chars)
     FROM_NAME:     str = "Find me in the terminal"
     FROM_EMAIL:    str
+    # Optional SendGrid API key (preferred if set and EMAIL_PROVIDER selects sendgrid)
+
+    # Optional provider override: 'sendgrid' or 'smtp'. If unset, SendGrid is used when API key is present.
+    EMAIL_PROVIDER: Optional[str] = None
 
     # ── Security ───────────────────────────────────────────────────────
     SECRET_KEY:       str = "change-me-in-production-use-openssl-rand-hex-32"

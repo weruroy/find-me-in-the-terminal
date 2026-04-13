@@ -11,6 +11,7 @@ asyncpg==0.30.0
 
 # ── Email — async SMTP ─────────────────────────────────────────────────────
 aiosmtplib==3.0.2
+resend==2.0.0
 
 # ── Config & validation ────────────────────────────────────────────────────
 pydantic==2.10.3
@@ -20,3 +21,4 @@ pydantic-settings==2.6.1
 # ── Utilities ──────────────────────────────────────────────────────────────
 python-dotenv==1.0.1
 python-multipart==0.0.12     # required for FastAPI form data
+httpx==0.24.1                # async HTTP client for SendGrid / Resend API calls

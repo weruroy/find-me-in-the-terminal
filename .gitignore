@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 objective_c.html
+old_email_service.txt
 
 # Python
 __pycache__/
