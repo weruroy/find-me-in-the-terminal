@@ -145,7 +145,7 @@
 
       <p class="text-xs text-outline flex items-center gap-2" style="line-height:1.6">
         <span class="material-symbols-outlined text-primary" style="font-size:14px">verified</span>
-        Joined by 12,400+ developers from Google, Stripe, and Vercel.
+        Trusted by developers just like you 
       </p>
     </div>
 
@@ -290,13 +290,12 @@
   <div class="flex flex-col md:flex-row justify-between items-center max-w-5xl mx-auto gap-6">
     <div class="text-center md:text-left">
       <div class="text-lg font-bold text-on-surface tracking-[-0.02em] mb-2">Find me in the terminal</div>
-      <p class="font-['Manrope'] text-sm text-on-surface-variant">© 2024 Find me in the terminal. All rights reserved.</p>
+      <p class="font-['Manrope'] text-sm text-on-surface-variant">© {getLatestYear()} Find me in the terminal. All rights reserved.</p>
     </div>
     <div class="flex gap-8">
       <a class="font-['Manrope'] text-sm text-on-surface-variant hover:text-primary transition-colors duration-200" href="#">Archive</a>
       <a class="font-['Manrope'] text-sm text-on-surface-variant hover:text-primary transition-colors duration-200" href="#">About</a>
       <a class="font-['Manrope'] text-sm text-on-surface-variant hover:text-primary transition-colors duration-200" href="/privacy">Privacy</a>
-      <a class="font-['Manrope'] text-sm text-on-surface-variant hover:text-primary transition-colors duration-200" href="#">Terms</a>
     </div>
   </div>
 </footer>
@@ -320,7 +319,10 @@
     document.getElementById('cta-section').scrollIntoView({ behavior: 'smooth' });
     showCtaForm();
   }
-
+ function getLatestYear(){
+    const now = new Date();
+    return now.getFullYear();
+ }
   function showCtaForm() {
     document.getElementById('ctaButtonBlock').classList.add('hidden');
     document.getElementById('ctaFormBlock').classList.remove('hidden');
